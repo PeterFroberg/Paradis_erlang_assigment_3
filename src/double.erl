@@ -14,7 +14,7 @@
 
 start() ->
   Pid = spawn_link(?MODULE, double,[]),
-  register(double, Pid),
+  register(?MODULE, Pid),
   {ok, Pid}.
 
 double() ->
@@ -27,7 +27,7 @@ double() ->
 
 double(T) ->
   Ref = make_ref(),
-  case is_pid(whereis(double)) of
+  case is_pid(whereis(?MODULE)) of
     false ->
       io:format("Process dead, trying again in 100ms"),
       timer:sleep(100),
