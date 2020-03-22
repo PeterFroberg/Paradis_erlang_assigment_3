@@ -16,7 +16,6 @@ start(N, M) ->
   register(start, self()),
   [H | T] = createRingNode(N, []),
   Nodes = T ++ [H],
-  io:format("~p", [Nodes]),
   Ref = make_ref(),
   H ! {Nodes, 0, N * M, Ref},
   receive
