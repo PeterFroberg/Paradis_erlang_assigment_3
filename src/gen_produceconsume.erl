@@ -12,20 +12,38 @@
 %% API
 -export([start/2, stop/1, produce/2, consume/1]).
 
--callback handl_produce(T::term()) ->
+-callback handle_produce(T::term()) ->
 {ok, Task}.
 
--callback handle_consume(Pid::term()) ->
+-callback handle_consume(T::term()) ->
   ok.
 
 start(Callback, T) ->
-  ok.
+  spawn(fun() -> buffer(Callback,T) end).
+
+buffer(Callback, MaxTasks, Buffer, Buffersize) ->
+  [H|T] = Buffer,
+  receive
+    {Pid, get, Ref, T} when Buffersize > 0 ->
+      Pid ! {Ref, Callback:handle_consume(T)},
+      buffer(Callback, MaxTasks, T, Buffersize -1);
+
+    {Pid, put, Ref, T} when Buffersize < T ->
+      NewTask = Callback:handle_produce(T),
+      buffer(Callback, MaxTasks, [Buffer|[NewTask]], Buffersize +1)
+  end.
+
 
 stop(Pid) ->
   ok.
 
 produce(Pid, T) ->
-  Callback:handel_produce(T),
+  Ref = make_ref(),
+  Pid ! {self(), Ref, T},
+  receive
+    {Ref} ->
+      ok
+  end,
   ok.
 
 consume(Pid) ->
