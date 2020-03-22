@@ -24,13 +24,15 @@ start(Callback, T) ->
 buffer(Callback, MaxTasks, Buffer, Buffersize) ->
   [H|T] = Buffer,
   receive
+    %%Consumer
     {Pid, get, Ref, T} when Buffersize > 0 ->
-      Pid ! {Ref, Callback:handle_consume(T)},
+      Pid ! {Ref, Callback, H},
       buffer(Callback, MaxTasks, T, Buffersize -1);
-
+    %%Producer
     {Pid, put, Ref, T} when Buffersize < T ->
-      NewTask = Callback:handle_produce(T),
-      buffer(Callback, MaxTasks, [Buffer|[NewTask]], Buffersize +1)
+      {ok,NewTask} = Callback:handle_produce(T),
+      buffer(Callback, MaxTasks, [Buffer|[NewTask]], Buffersize +1),
+      Pid ! {Ref, ok}
   end.
 
 
@@ -39,12 +41,16 @@ stop(Pid) ->
 
 produce(Pid, T) ->
   Ref = make_ref(),
-  Pid ! {self(), Ref, T},
+  Pid ! {self(), put, Ref, T},
   receive
-    {Ref} ->
+    {Ref, ok} ->
       ok
-  end,
-  ok.
+  end.
 
 consume(Pid) ->
-  ok.
+  Ref = make_ref(),
+  Pid ! {self(), get, Ref},
+  receive
+    {Ref, Callback, Task} ->
+      Callback:handle_consume(Task)
+  end.
